@@ -8,18 +8,28 @@ import { getCurrentUser } from '../services/authService'
 
 const SEMESTERS = ['All', 'Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
 
+const CATEGORIES = [
+  { value: 'All', label: 'All Resources' },
+  { value: 'notes', label: '📒 Lecture Notes' },
+  { value: 'question_papers', label: '📝 Exam Papers / PYQ' },
+  { value: 'images', label: '🖼️ Diagrams & Images' },
+  { value: 'study_materials', label: '📚 Study Guides' },
+]
+
 export default function Notes() {
   const [materials, setMaterials] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [semester, setSemester] = useState('All')
+  const [category, setCategory] = useState('All')
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [currentUser, setCurrentUser] = useState(null)
   const [actionLoadingId, setActionLoadingId] = useState(null)
 
   const fetchMaterials = async () => {
     setLoading(true)
-    const { data } = await getApprovedMaterials({ category: 'notes' })
+    // Fetch all approved materials so notes, diagrams, images, and papers all display
+    const { data } = await getApprovedMaterials()
     setMaterials(data || [])
     setLoading(false)
   }
@@ -35,6 +45,7 @@ export default function Notes() {
     const q = search.toLowerCase()
     return (
       (semester === 'All' || n.semester === semester) &&
+      (category === 'All' || n.category === category) &&
       (n.title.toLowerCase().includes(q) || (n.subject && n.subject.toLowerCase().includes(q)))
     )
   })
@@ -95,18 +106,33 @@ export default function Notes() {
           />
         </div>
 
-        <div className="flex flex-wrap gap-3 items-center">
-          <SlidersHorizontal className="w-4 h-4 text-concrete-400" />
-          <span className="text-xs font-semibold text-concrete-600 uppercase tracking-wider">Semester:</span>
-          <select
-            value={semester}
-            onChange={(e) => setSemester(e.target.value)}
-            className="text-xs border border-concrete-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-concrete-700 font-medium cursor-pointer"
-          >
-            {SEMESTERS.map((s) => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        <div className="flex flex-wrap gap-4 items-center">
+          <div className="flex items-center gap-2">
+            <SlidersHorizontal className="w-4 h-4 text-concrete-400" />
+            <span className="text-xs font-semibold text-concrete-600 uppercase tracking-wider">Type:</span>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="text-xs border border-concrete-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-concrete-700 font-medium cursor-pointer"
+            >
+              {CATEGORIES.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-concrete-600 uppercase tracking-wider">Semester:</span>
+            <select
+              value={semester}
+              onChange={(e) => setSemester(e.target.value)}
+              className="text-xs border border-concrete-200 rounded-xl px-3 py-1.5 bg-white focus:outline-none focus:ring-2 focus:ring-sage-400 text-concrete-700 font-medium cursor-pointer"
+            >
+              {SEMESTERS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+          </div>
         </div>
       </div>
 

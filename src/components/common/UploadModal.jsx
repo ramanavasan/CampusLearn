@@ -6,10 +6,38 @@ import { uploadMaterial } from '../../services/materialsService'
 const SEMESTERS = ['Sem 1', 'Sem 2', 'Sem 3', 'Sem 4', 'Sem 5', 'Sem 6', 'Sem 7', 'Sem 8']
 
 const CATEGORIES = [
-  { value: 'notes', label: 'Study Notes (PDF)' },
-  { value: 'question_papers', label: 'Question Paper / PYQ (PDF)' },
-  { value: 'images', label: 'Diagram / Image (PNG, JPG)' },
-  { value: 'study_materials', label: 'Other Study Material' },
+  {
+    value: 'notes',
+    label: '📒 Lecture Notes',
+    accept: '.pdf,.doc,.docx,.ppt,.pptx,.txt',
+    formats: 'PDF, Word, PowerPoint, TXT',
+    hint: 'Class notes, handouts, slides',
+    maxMB: 50,
+  },
+  {
+    value: 'question_papers',
+    label: '📝 Exam Papers / PYQ',
+    accept: '.pdf',
+    formats: 'PDF only',
+    hint: 'Previous year question papers',
+    maxMB: 25,
+  },
+  {
+    value: 'images',
+    label: '🖼️ Diagrams & Charts',
+    accept: '.png,.jpg,.jpeg,.webp',
+    formats: 'PNG, JPG, JPEG, WEBP',
+    hint: 'Circuit diagrams, mind maps, photos',
+    maxMB: 15,
+  },
+  {
+    value: 'study_materials',
+    label: '📚 Study Guides & References',
+    accept: '.pdf,.doc,.docx,.zip,.txt',
+    formats: 'PDF, Word, ZIP, TXT',
+    hint: 'Reference books, guides, resources',
+    maxMB: 50,
+  },
 ]
 
 export default function UploadModal({ isOpen, onClose, onUploadSuccess, defaultCategory = 'notes' }) {
@@ -26,13 +54,16 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess, defaultC
 
   if (!isOpen) return null
 
+  // Get the config object for the currently selected category
+  const activeCat = CATEGORIES.find((c) => c.value === category) || CATEGORIES[0]
+
   const handleFileChange = (e) => {
     const selected = e.target.files[0]
     if (!selected) return
 
-    // Validate size (max 50MB)
-    if (selected.size > 50 * 1024 * 1024) {
-      setErrorMsg('File is too large. Maximum allowed size is 50 MB.')
+    // Validate size against per-category limit
+    if (selected.size > activeCat.maxMB * 1024 * 1024) {
+      setErrorMsg(`File is too large. Max allowed for "${activeCat.label}" is ${activeCat.maxMB} MB.`)
       return
     }
 
@@ -142,36 +173,48 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess, defaultC
           {/* File input box */}
           <div>
             <label className="block text-xs font-semibold text-concrete-700 uppercase tracking-wider mb-1.5">
-              Select Document or Image <span className="text-amber-600">*</span>
+              Select File <span className="text-amber-600">*</span>
             </label>
             <label className="flex flex-col items-center justify-center border-2 border-dashed border-concrete-300 rounded-2xl p-4 bg-concrete-50/70 hover:bg-sage-50/50 hover:border-sage-400 cursor-pointer transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center text-sage-700">
+              <div className="flex items-center gap-3 w-full">
+                <div className="w-10 h-10 rounded-xl bg-sage-100 flex items-center justify-center text-sage-700 flex-shrink-0">
                   {file && file.type.startsWith('image/') ? (
                     <ImageIcon className="w-5 h-5" />
                   ) : (
                     <FileText className="w-5 h-5" />
                   )}
                 </div>
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-concrete-800">
-                    {file ? file.name : 'Choose a PDF or Image'}
+                <div className="text-left min-w-0">
+                  <p className="text-sm font-semibold text-concrete-800 truncate">
+                    {file ? file.name : `Choose a file to upload`}
                   </p>
-                  <p className="text-xs text-concrete-500">
+                  <p className="text-xs text-concrete-500 mt-0.5">
                     {file
-                      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB`
-                      : 'Supported formats: .pdf, .png, .jpg, .jpeg, .webp (up to 50MB)'}
+                      ? `${(file.size / (1024 * 1024)).toFixed(2)} MB · ${file.name.split('.').pop().toUpperCase()}`
+                      : `Accepted: ${activeCat.formats} · Max ${activeCat.maxMB} MB`}
                   </p>
                 </div>
               </div>
               <input
                 type="file"
-                accept=".pdf,image/png,image/jpeg,image/webp"
+                accept={activeCat.accept}
                 onChange={handleFileChange}
                 className="hidden"
                 required
               />
             </label>
+            {/* Format pills */}
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {activeCat.accept.split(',').map((ext) => (
+                <span
+                  key={ext}
+                  className="text-xs font-semibold bg-sage-100 text-sage-800 px-2 py-0.5 rounded-full border border-sage-200"
+                >
+                  {ext.replace('.', '').toUpperCase()}
+                </span>
+              ))}
+              <span className="text-xs text-concrete-400 self-center ml-1">accepted</span>
+            </div>
           </div>
 
           {/* Subject Code & Subject Name */}
@@ -230,7 +273,11 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess, defaultC
               </label>
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  setCategory(e.target.value)
+                  setFile(null) // reset file when category changes
+                  setErrorMsg('')
+                }}
                 className="w-full px-3.5 py-2.5 text-sm bg-concrete-50 border border-concrete-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sage-400 text-concrete-900"
               >
                 {CATEGORIES.map((c) => (
@@ -239,6 +286,11 @@ export default function UploadModal({ isOpen, onClose, onUploadSuccess, defaultC
                   </option>
                 ))}
               </select>
+              {/* Hint below category */}
+              <p className="mt-1.5 text-xs text-concrete-500 flex items-center gap-1">
+                <span className="text-amber-500">📌</span>
+                {activeCat.hint}
+              </p>
             </div>
 
             <div>

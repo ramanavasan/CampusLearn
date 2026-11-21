@@ -57,19 +57,27 @@ export default function StudentDashboard() {
 
   const studentName = currentUser?.profile?.full_name || 'Student'
   const regNo = currentUser?.profile?.register_number
+  const initial = (currentUser?.profile?.full_name || studentName || 'S').charAt(0).toUpperCase()
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
       {/* Welcome banner */}
       <div className="bg-gradient-to-r from-sage-800 via-sage-700 to-sage-600 rounded-3xl p-7 text-white relative overflow-hidden shadow-md">
         <div className="absolute -top-10 -right-10 w-48 h-48 bg-white/10 rounded-full blur-2xl" />
-        <p className="text-sage-200 text-sm font-medium mb-1">
-          {regNo ? `Reg No: ${regNo}` : 'College Student Portal'} 👋
-        </p>
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2 tracking-tight">
-          Welcome back, {studentName}!
-        </h1>
-        <p className="text-sage-100 text-sm max-w-md leading-relaxed">
+        <div className="flex items-center gap-4 mb-2">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500 text-white font-extrabold text-2xl flex items-center justify-center shadow-lg border-2 border-white/20 flex-shrink-0">
+            {initial}
+          </div>
+          <div>
+            <p className="text-sage-200 text-xs sm:text-sm font-medium">
+              {regNo ? `Reg No: ${regNo}` : 'College Student Portal'} 👋
+            </p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
+              Welcome back, {studentName}!
+            </h1>
+          </div>
+        </div>
+        <p className="text-sage-100 text-sm max-w-md leading-relaxed mt-1">
           Access course notes, download past question papers, and share educational materials with your department.
         </p>
         <div className="mt-5 flex flex-wrap gap-3">

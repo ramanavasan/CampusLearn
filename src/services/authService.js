@@ -11,7 +11,7 @@ export function normalizeStudentIdentifier(identifier) {
   if (trimmed.includes('@')) {
     return trimmed.toLowerCase()
   }
-  return `${trimmed.toUpperCase()}@campuslearn.edu`
+  return `${trimmed.toUpperCase()}@campuslearn.in`
 }
 
 /**
@@ -46,6 +46,23 @@ export async function signIn(identifier, password, expectedRole = 'student') {
     password,
   })
 
+  // If login failed with "Invalid login credentials", try fallback domain (.edu <-> .in)
+  if (error && error.message.toLowerCase().includes('invalid login credentials') && expectedRole === 'student') {
+    const altEmail = emailToUse.endsWith('@campuslearn.in')
+      ? emailToUse.replace('@campuslearn.in', '@campuslearn.edu')
+      : emailToUse.replace('@campuslearn.edu', '@campuslearn.in')
+
+    const altRes = await supabase.auth.signInWithPassword({
+      email: altEmail,
+      password,
+    })
+
+    if (!altRes.error && altRes.data?.user) {
+      data = altRes.data
+      error = null
+    }
+  }
+
   // If login failed for student with "Invalid login credentials", check if it's an authorized first-time student
   if (error && error.message.toLowerCase().includes('invalid login credentials') && expectedRole === 'student') {
     const rawRegNo = identifier.trim().includes('@')
@@ -75,7 +92,7 @@ export async function signIn(identifier, password, expectedRole = 'student') {
         return {
           success: false,
           error: signUpRes.error.message.includes('Public registration requires')
-            ? 'First-time registration trigger error. Please run the SQL patch in Supabase SQL editor.'
+            ? 'First-time registration trigger error. Please run migration 07 in Supabase SQL editor.'
             : signUpRes.error.message,
         }
       }
@@ -85,12 +102,12 @@ export async function signIn(identifier, password, expectedRole = 'student') {
         error = null
       }
     } else if (regAuth && !regAuth.allowed) {
-      if (regAuth.reason === 'already_registered') {
+      if (regAuth.reason === 'already_registered' || regAuth.message?.includes('Unable to register')) {
         return {
           success: false,
           error: 'Incorrect password for this register number. Please check your password.',
         }
-      } else if (regAuth.reason === 'not_found') {
+      } else if (regAuth.reason === 'not_found' || regAuth.message?.includes('not found')) {
         return {
           success: false,
           error: `Register number "${rawRegNo}" is not in the college authorized student list.`,
@@ -100,6 +117,12 @@ export async function signIn(identifier, password, expectedRole = 'student') {
   }
 
   if (error) {
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      return {
+        success: false,
+        error: 'Account email is pending confirmation. Run migration 07 in Supabase SQL editor to auto-confirm all student accounts.',
+      }
+    }
     return { success: false, error: error.message }
   }
 
@@ -158,7 +181,7 @@ export async function registerStudent({ registerNumber, fullName, password, depa
   }
 
   const cleanRegNo = registerNumber.trim().toUpperCase()
-  const syntheticEmail = `${cleanRegNo}@campuslearn.edu`
+  const syntheticEmail = `${cleanRegNo}@campuslearn.in`
 
   const { data, error } = await supabase.auth.signUp({
     email: syntheticEmail,
@@ -173,6 +196,12 @@ export async function registerStudent({ registerNumber, fullName, password, depa
   })
 
   if (error) {
+    if (error.message.toLowerCase().includes('email not confirmed')) {
+      return {
+        success: false,
+        error: 'Account email is unconfirmed. Run migration 06 in Supabase SQL editor to auto-confirm student accounts.',
+      }
+    }
     return { success: false, error: error.message }
   }
 

@@ -43,7 +43,16 @@ export async function getApprovedMaterials({ category, semester, search } = {}) 
     }
 
     const { data, error } = await query
-    return { data: data || [], error }
+    if (error) {
+      // If the join with profiles fails, fallback to selecting materials directly
+      const fallback = await supabase
+        .from('materials')
+        .select('*')
+        .eq('status', 'approved')
+        .order('created_at', { ascending: false })
+      return { data: fallback.data || [], error: fallback.error }
+    }
+    return { data: data || [], error: null }
   } catch (err) {
     return { data: [], error: err.message }
   }
@@ -161,7 +170,8 @@ export async function uploadMaterial({ file, subjectCode, subjectName, semester,
 }
 
 /**
- * Download material file (Generates signed URL and triggers browser download)
+ * Download material file — works for authenticated AND unauthenticated users.
+ * Tries a 1-hour signed URL (works even without login once storage policy allows anon).
  */
 export async function downloadMaterialFile(filePath, fileName = 'material') {
   if (!isSupabaseConfigured || !supabase) {
@@ -170,6 +180,7 @@ export async function downloadMaterialFile(filePath, fileName = 'material') {
   }
 
   try {
+    // createSignedUrl works for anon users when the storage select policy permits them
     const { data, error } = await supabase.storage
       .from('campus_materials')
       .createSignedUrl(filePath, 3600, {
